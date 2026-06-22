@@ -11,13 +11,50 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       setError("กรุณากรอกอีเมลและรหัสผ่าน");
       return;
     }
+
+    setIsLoading(true);
     setError("");
-    navigate("/home");
+
+    try {
+      // ยิงข้อมูลไปให้ Backend
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        navigate("/home");
+      } else {
+        setError(data.message || "เกิดข้อผิดพลาดในการเข้าสู่ระบบ");
+      }
+    } catch (err) {
+      setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -27,12 +64,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white border border-stone-200 rounded-2xl shadow-sm p-8">
-        
         <BrandHeader subtitle="เข้าสู่ระบบเพื่อเลือกซื้อสินค้า" />
 
         {/* Form */}
         <div className="space-y-4">
-          
           <div>
             <label className="text-sm text-stone-600 mb-1.5 block">อีเมล</label>
             <input
@@ -92,8 +127,12 @@ export default function LoginPage() {
 
           <button
             onClick={handleSubmit}
-            className="w-full bg-stone-900 hover:bg-stone-800 text-white font-medium py-2.5 rounded-lg transition-colors cursor-pointer"
+            disabled={isLoading}
+            className={`w-full text-white font-medium py-2.5 rounded-lg transition-colors cursor-pointer
+              ${isLoading ? "bg-stone-400 cursor-not-allowed" : "bg-stone-900 hover:bg-stone-800"}
+            `}
           >
+            {isLoading ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ"}
             เข้าสู่ระบบ
           </button>
         </div>
