@@ -42,6 +42,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ดึงข้อมูลสินค้าชิ้นเดียวตาม ID
+router.get('/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "ไม่พบสินค้า" });
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // เพิ่มสินค้าใหม่
 router.post('/', upload.single('image'), async (req, res) => {
   try {
