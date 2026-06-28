@@ -70,21 +70,42 @@ export default function ProductsPage() {
     }
   }, [products, searchTerm, selectedCategory, sortBy]);
 
-  const addToCart = (product) => {
-    const existingCart = JSON.parse(localStorage.getItem("cart")) || [];
+  const addToCart = async (product) => {
+    const token = localStorage.getItem("token");
 
-    const existingItemIndex = existingCart.findIndex(
-      (item) => item._id === product._id,
-    );
-
-    if (existingItemIndex >= 0) {
-      existingCart[existingItemIndex].quantity += 1;
-    } else {
-      existingCart.push({ ...product, quantity: 1 });
+    if (!token) {
+      alert("กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้าลงตะกร้า");
+      navigate("/login");
+      return;
     }
 
-    localStorage.setItem("cart", JSON.stringify(existingCart));
-    alert(`เพิ่ม "${product.name}" ลงในตะกร้าแล้ว!`);
+    try {
+      const res = await fetch(`${API_URL}/api/cart/add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId: product._id,
+          name: product.name,
+          price: product.price,
+          imageUrl: product.imageUrl,
+          category: product.category,
+          quantity: 1,
+        }),
+      });
+
+      if (res.ok) {
+        alert(`เพิ่ม "${product.name}" ลงในตะกร้าแล้ว!`);
+      } else {
+        const errorData = await res.json();
+        alert(`เพิ่มสินค้าไม่สำเร็จ: ${errorData.message}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
+    }
   };
 
   return (

@@ -9,6 +9,7 @@ import ManagePage from "./views/ManagePage"
 import HistoryPage from "./views/HistoryPage"
 import CartPage from "./views/CartPage"
 import CheckOutPage from "./views/CheckOutPage"
+import AdminOrderPage from './views/AdminOrderPage';
 import './App.css'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/manage" element={<ManagePage />} />
         <Route path="/history" element={<HistoryPage />} />
+        <Route path="/order" element={<AdminOrderPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckOutPage />} />
       </Routes>

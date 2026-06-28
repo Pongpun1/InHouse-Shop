@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Package, Clock, CheckCircle, Truck, XCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { Package, Clock, CheckCircle, Truck, XCircle, ArrowLeft, Loader2, User } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-export default function HistoryPage() {
+export default function AdminOrderPage() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchAllOrders = async () => {
       const token = localStorage.getItem('token');
+      // เช็คเพิ่มเติมว่ามีสิทธิ์ไหม (หรือจะใช้ User Context เช็คก็ได้)
       if (!token) {
-        alert("กรุณาเข้าสู่ระบบเพื่อดูประวัติการสั่งซื้อ");
         navigate('/login');
         return;
       }
 
       try {
-        const res = await fetch(`${API_URL}/api/orders`, {
+        // สังเกตว่าเราเรียกไปที่ /api/orders/all แทน
+        const res = await fetch(`${API_URL}/api/orders/all`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -33,63 +34,48 @@ export default function HistoryPage() {
           navigate('/login');
         }
       } catch (err) {
-        console.error("โหลดประวัติการสั่งซื้อไม่สำเร็จ", err);
+        console.error("โหลดข้อมูลคำสั่งซื้อไม่สำเร็จ", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchHistory();
+    fetchAllOrders();
   }, [navigate]);
 
-  // ฟังก์ชันแปลงสถานะเป็นภาษาไทยและสี
   const getStatusDisplay = (status) => {
     switch (status) {
-      case 'Pending':
-        return { text: 'รอดำเนินการ', color: 'bg-amber-100 text-amber-700', icon: <Clock className="w-4 h-4" /> };
-      case 'Paid':
-        return { text: 'ชำระเงินแล้ว', color: 'bg-blue-100 text-blue-700', icon: <CheckCircle className="w-4 h-4" /> };
-      case 'Shipped':
-        return { text: 'กำลังจัดส่ง', color: 'bg-purple-100 text-purple-700', icon: <Truck className="w-4 h-4" /> };
-      case 'Delivered':
-        return { text: 'จัดส่งสำเร็จ', color: 'bg-green-100 text-green-700', icon: <Package className="w-4 h-4" /> };
-      case 'Cancelled':
-        return { text: 'ยกเลิก', color: 'bg-red-100 text-red-700', icon: <XCircle className="w-4 h-4" /> };
-      default:
-        return { text: status, color: 'bg-stone-100 text-stone-700', icon: <Clock className="w-4 h-4" /> };
+      case 'Pending': return { text: 'รอดำเนินการ', color: 'bg-amber-100 text-amber-700', icon: <Clock className="w-4 h-4" /> };
+      case 'Paid': return { text: 'ชำระเงินแล้ว', color: 'bg-blue-100 text-blue-700', icon: <CheckCircle className="w-4 h-4" /> };
+      case 'Shipped': return { text: 'กำลังจัดส่ง', color: 'bg-purple-100 text-purple-700', icon: <Truck className="w-4 h-4" /> };
+      case 'Delivered': return { text: 'จัดส่งสำเร็จ', color: 'bg-green-100 text-green-700', icon: <Package className="w-4 h-4" /> };
+      case 'Cancelled': return { text: 'ยกเลิก', color: 'bg-red-100 text-red-700', icon: <XCircle className="w-4 h-4" /> };
+      default: return { text: status, color: 'bg-stone-100 text-stone-700', icon: <Clock className="w-4 h-4" /> };
     }
   };
 
-  // ฟังก์ชันแปลงวันที่ให้อ่านง่าย
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-stone-400" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+      <Loader2 className="w-10 h-10 animate-spin text-stone-400" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-stone-50 py-10 px-4 sm:px-6 font-sans">
-      <div className="max-w-4xl mx-auto">
-        
+      <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => navigate('/home')} className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-3xl font-extrabold text-stone-900 flex items-center gap-3">
-            <Package className="w-8 h-8 text-amber-500" /> ประวัติการสั่งซื้อ
+            <Package className="w-8 h-8 text-amber-500" /> คำสั่งซื้อทั้งหมดในระบบ
           </h1>
         </div>
 
@@ -97,23 +83,31 @@ export default function HistoryPage() {
           <div className="space-y-6">
             {orders.map((order) => {
               const statusDisplay = getStatusDisplay(order.status);
-              
               return (
                 <div key={order._id} className="bg-white rounded-3xl shadow-sm border border-stone-100 overflow-hidden">
                   
-                  {/* ส่วนหัวของบิล */}
-                  <div className="bg-stone-50 border-b border-stone-100 p-5 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  {/* ส่วนหัวของบิล + ข้อมูลคนสั่ง */}
+                  <div className="bg-stone-900 text-white p-5 sm:px-8 flex flex-col sm:flex-row justify-between gap-4">
                     <div>
-                      <p className="text-xs text-stone-500 mb-1">รหัสคำสั่งซื้อ: {order._id}</p>
-                      <p className="text-sm font-bold text-stone-900">{formatDate(order.createdAt)}</p>
+                      <p className="text-xs text-stone-400 mb-1">รหัสบิล: {order._id}</p>
+                      <p className="text-sm font-bold">{formatDate(order.createdAt)}</p>
                     </div>
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold w-fit ${statusDisplay.color}`}>
-                      {statusDisplay.icon}
-                      {statusDisplay.text}
+                    <div className="flex items-center gap-2">
+                      <User className="w-5 h-5 text-amber-400" />
+                      <div>
+                        <p className="text-sm font-bold">ลูกค้า: {order.userId?.username || 'ผู้ใช้ทั่วไป'}</p>
+                        <p className="text-xs text-stone-400">{order.userId?.email || 'ไม่มีอีเมล'}</p>
+                      </div>
+                    </div>
+                    <div className="sm:text-right">
+                      <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold w-fit ${statusDisplay.color}`}>
+                        {statusDisplay.icon}
+                        {statusDisplay.text}
+                      </div>
                     </div>
                   </div>
 
-                  {/* รายการสินค้าในบิล */}
+                  {/* รายการสินค้า */}
                   <div className="p-5 sm:px-8 divide-y divide-stone-50">
                     {order.items.map((item, index) => (
                       <div key={index} className="py-4 first:pt-0 flex items-center gap-4">
@@ -135,10 +129,10 @@ export default function HistoryPage() {
                     ))}
                   </div>
 
-                  {/* สรุปยอดและข้อมูลจัดส่งของบิล */}
+                  {/* สรุปยอดและข้อมูลจัดส่ง */}
                   <div className="bg-stone-50 border-t border-stone-100 p-5 sm:px-8 flex flex-col sm:flex-row justify-between gap-6">
                     <div className="text-sm text-stone-600">
-                      <p className="font-bold text-stone-900 mb-1">จัดส่งไปที่:</p>
+                      <p className="font-bold text-stone-900 mb-1">ข้อมูลการจัดส่ง (ตามที่ลูกค้าระบุ):</p>
                       <p>{order.shippingAddress.name} ({order.shippingAddress.phone})</p>
                       <p className="line-clamp-2">{order.shippingAddress.address} จ.{order.shippingAddress.province} {order.shippingAddress.zipCode}</p>
                     </div>
@@ -148,28 +142,16 @@ export default function HistoryPage() {
                       <p className="text-xs text-stone-400 mt-1 uppercase">ชำระผ่าน: {order.paymentMethod.replace('_', ' ')}</p>
                     </div>
                   </div>
-
                 </div>
               );
             })}
           </div>
         ) : (
-          /* กรณีไม่มีประวัติการสั่งซื้อ */
-          <div className="bg-white p-12 rounded-3xl shadow-sm border border-stone-100 text-center">
-            <div className="w-24 h-24 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Package className="w-10 h-10 text-stone-300" />
-            </div>
-            <h2 className="text-2xl font-bold text-stone-900 mb-2">ยังไม่มีประวัติการสั่งซื้อ</h2>
-            <p className="text-stone-500 mb-8">คุณยังไม่เคยทำการสั่งซื้อสินค้าใดๆ กับทางร้าน</p>
-            <button 
-              onClick={() => navigate('/products')}
-              className="bg-stone-900 hover:bg-stone-800 text-white font-bold py-3 px-8 rounded-full transition-colors"
-            >
-              เริ่มช้อปปิ้งเลย
-            </button>
+          <div className="text-center py-20 bg-white rounded-3xl border border-stone-200">
+            <Package className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-stone-900 mb-2">ยังไม่มีคำสั่งซื้อในระบบ</h3>
           </div>
         )}
-
       </div>
     </div>
   );
