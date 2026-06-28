@@ -17,7 +17,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const PORT = process.env.PORT || 3000;
 
-mongoose.connect('mongodb://localhost:27017/my_ecommerce')
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('เชื่อมต่อ MongoDB สำเร็จ'))
   .catch((err) => console.log('เชื่อมต่อ MongoDB ล้มเหลว:', err));
 
