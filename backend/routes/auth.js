@@ -9,9 +9,21 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, phone, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username }, { phone }]
+    });
+
     if (existingUser) {
-      return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+      // บอกให้ชัดว่าซ้ำที่ field ไหน
+      if (existingUser.email === email) {
+        return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+      }
+      if (existingUser.username === username) {
+        return res.status(400).json({ message: 'ชื่อผู้ใช้งานนี้ถูกใช้งานแล้ว' });
+      }
+      if (existingUser.phone === phone) {
+        return res.status(400).json({ message: 'เบอร์โทรศัพท์นี้ถูกใช้งานแล้ว' });
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
