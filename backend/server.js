@@ -10,8 +10,15 @@ import orderRoutes from './routes/orders.js';
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'https://inhouse-shop.vercel.app'
+  ],
+  credentials: true
+};
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
