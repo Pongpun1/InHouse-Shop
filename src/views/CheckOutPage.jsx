@@ -1,87 +1,138 @@
-// ไฟล์: CheckOutPage.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, CreditCard, Banknote, QrCode, ShieldCheck, Loader2, ArrowLeft } from "lucide-react";
+import {
+  MapPin, CreditCard, Banknote, QrCode,
+  Loader2, ArrowLeft, CheckCircle, ChevronRight, Package,
+} from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("token")}`,
 });
 
+const formatTHB = (n) => `฿${Number(n).toLocaleString()}`;
+
+// ── Step indicator ──────────────────────────────────────────────
+const STEPS = ["ตะกร้าสินค้า", "ที่อยู่จัดส่ง", "ยืนยันคำสั่งซื้อ"];
+
+function StepBar({ current }) {
+  return (
+    <div className="flex items-center gap-0 mb-10">
+      {STEPS.map((label, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <React.Fragment key={label}>
+            <div className="flex flex-col items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                done ? "bg-green-600 text-white" : active ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-400"
+              }`}>
+                {done ? <CheckCircle className="w-4 h-4" /> : i + 1}
+              </div>
+              <span className={`text-xs mt-1.5 font-medium whitespace-nowrap ${active ? "text-stone-900" : "text-stone-400"}`}>
+                {label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={`h-px flex-1 mx-2 mb-5 ${done ? "bg-green-600" : "bg-stone-200"}`} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Input ──────────────────────────────────────────────────────
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls = "w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all";
+
+// ── Payment option ─────────────────────────────────────────────
+function PayOption({ value, current, onChange, icon: Icon, title, sub }) {
+  const active = current === value;
+  return (
+    <label className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all ${
+      active ? "border-amber-500 bg-amber-50" : "border-stone-200 hover:border-stone-300 bg-white"
+    }`}>
+      <input type="radio" name="payment" value={value} checked={active} onChange={() => onChange(value)} className="hidden" />
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${active ? "bg-amber-500 text-stone-900" : "bg-stone-100 text-stone-500"}`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="flex-1">
+        <p className={`text-sm font-bold ${active ? "text-stone-900" : "text-stone-700"}`}>{title}</p>
+        {sub && <p className="text-xs text-stone-400 mt-0.5">{sub}</p>}
+      </div>
+      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+        active ? "border-amber-500" : "border-stone-300"
+      }`}>
+        {active && <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />}
+      </div>
+    </label>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────
 export default function CheckOutPage() {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  // State สำหรับฟอร์มที่อยู่และวิธีชำระเงิน
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    province: "",
-    zipCode: "",
-  });
-  const [paymentMethod, setPaymentMethod] = useState("credit_card");
+  const [form, setForm] = useState({ name: "", phone: "", address: "", province: "", zipCode: "" });
+  const [paymentMethod, setPaymentMethod] = useState("cod");
 
   useEffect(() => {
     const fetchCart = async () => {
       try {
         const res = await fetch(`${API_URL}/api/cart`, { headers: authHeaders() });
-        if (res.status === 401) return navigate('/login');
-        
+        if (res.status === 401) { navigate("/login"); return; }
         const data = await res.json();
-        if (!data.items || data.items.length === 0) {
-          alert("ตะกร้าของคุณว่างเปล่า");
-          navigate('/products');
-          return;
-        }
+        if (!data.items?.length) { navigate("/cart"); return; }
         setCartItems(data.items);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+      } catch { setErrorMsg("โหลดตะกร้าไม่สำเร็จ"); }
+      finally { setLoading(false); }
     };
     fetchCart();
   }, [navigate]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setProcessing(true);
-
+    setErrorMsg("");
     try {
       const res = await fetch(`${API_URL}/api/orders`, {
-        method: 'POST',
+        method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({
-          shippingAddress: formData,
-          paymentMethod: paymentMethod
-        }),
+        body: JSON.stringify({ shippingAddress: form, paymentMethod }),
       });
-
+      const data = await res.json();
       if (res.ok) {
-        alert("สั่งซื้อสินค้าสำเร็จ! ขอบคุณที่ใช้บริการครับ");
-        navigate('/history'); // ส่งไปหน้าประวัติการสั่งซื้อ (ถ้ามี) หรือหน้า Home
+        navigate("/history");
       } else {
-        const errorData = await res.json();
-        alert(`เกิดข้อผิดพลาด: ${errorData.message}`);
+        setErrorMsg(data.message || "เกิดข้อผิดพลาด");
       }
-    } catch (err) {
-      alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
-    } finally {
-      setProcessing(false);
-    }
+    } catch { setErrorMsg("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้"); }
+    finally { setProcessing(false); }
   };
 
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
+  const freeShipping = totalPrice >= 2000;
+  const shippingFee = freeShipping ? 0 : 50;
 
   if (loading) return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -90,147 +141,168 @@ export default function CheckOutPage() {
   );
 
   return (
-    <div className="min-h-screen bg-stone-50 py-10 px-4 sm:px-6 font-sans text-stone-800">
-      <div className="max-w-6xl mx-auto">
-        
-        <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => navigate('/cart')} className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600">
-            <ArrowLeft className="w-6 h-6" />
+    <div className="min-h-screen bg-stone-50 font-sans">
+      {/* Top bar */}
+      <div className="bg-white border-b border-stone-200 px-4 sm:px-6 py-4 mb-8">
+        <div className="max-w-5xl mx-auto flex items-center gap-4">
+          <button onClick={() => navigate("/cart")} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600 cursor-pointer">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-3xl font-extrabold text-stone-900">ชำระเงิน (Checkout)</h1>
+          <h1 className="text-xl font-extrabold text-stone-900">ชำระเงิน</h1>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* ฝั่งซ้าย: ข้อมูลจัดส่ง และ ชำระเงิน */}
-          <div className="lg:col-span-7 space-y-6">
-            
-            {/* กล่องที่อยู่จัดส่ง */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100">
-              <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
-                <MapPin className="text-amber-500 w-6 h-6" /> 1. ที่อยู่ในการจัดส่ง
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-stone-500 mb-1">ชื่อ-นามสกุล ผู้รับ</label>
-                  <input required type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-amber-500/50 outline-none" placeholder="เช่น สมชาย ใจดี" />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-16">
+        <StepBar current={1} />
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+          {/* ซ้าย */}
+          <div className="lg:col-span-3 space-y-6">
+
+            {/* ที่อยู่จัดส่ง */}
+            <div className="bg-white rounded-2xl border border-stone-100 p-6">
+              <div className="flex items-center gap-2.5 mb-6">
+                <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
+                  <MapPin className="w-4.5 h-4.5 text-amber-600" />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-stone-500 mb-1">เบอร์โทรศัพท์</label>
-                  <input required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-amber-500/50 outline-none" placeholder="08X-XXX-XXXX" />
+                <h2 className="font-bold text-stone-900">ที่อยู่จัดส่ง</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <Field label="ชื่อ-นามสกุล ผู้รับ">
+                    <input required type="text" name="name" value={form.name} onChange={handleChange} placeholder="เช่น สมชาย ใจดี" className={inputCls} />
+                  </Field>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-stone-500 mb-1">ที่อยู่ (บ้านเลขที่, หมู่บ้าน, ซอย, ถนน)</label>
-                  <textarea required name="address" value={formData.address} onChange={handleInputChange} rows="3" className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-amber-500/50 outline-none resize-none" placeholder="กรอกที่อยู่โดยละเอียด..."></textarea>
+                <div className="sm:col-span-2">
+                  <Field label="เบอร์โทรศัพท์">
+                    <input required type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="08X-XXX-XXXX" className={inputCls} />
+                  </Field>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-stone-500 mb-1">จังหวัด</label>
-                  <input required type="text" name="province" value={formData.province} onChange={handleInputChange} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-amber-500/50 outline-none" placeholder="เช่น กรุงเทพมหานคร" />
+                <div className="sm:col-span-2">
+                  <Field label="ที่อยู่">
+                    <textarea required name="address" value={form.address} onChange={handleChange} placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน" rows={3} className={`${inputCls} resize-none`} />
+                  </Field>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-stone-500 mb-1">รหัสไปรษณีย์</label>
-                  <input required type="text" name="zipCode" value={formData.zipCode} onChange={handleInputChange} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-amber-500/50 outline-none" placeholder="10000" />
-                </div>
+                <Field label="จังหวัด">
+                  <input required type="text" name="province" value={form.province} onChange={handleChange} placeholder="กรุงเทพมหานคร" className={inputCls} />
+                </Field>
+                <Field label="รหัสไปรษณีย์">
+                  <input required type="text" name="zipCode" value={form.zipCode} onChange={handleChange} placeholder="10000" className={inputCls} />
+                </Field>
               </div>
             </div>
 
-            {/* กล่องวิธีการชำระเงิน */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100">
-              <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
-                <ShieldCheck className="text-amber-500 w-6 h-6" /> 2. วิธีการชำระเงิน
-              </h2>
-              
+            {/* วิธีชำระเงิน */}
+            <div className="bg-white rounded-2xl border border-stone-100 p-6">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
+                  <CreditCard className="w-4.5 h-4.5 text-amber-600" />
+                </div>
+                <h2 className="font-bold text-stone-900">วิธีการชำระเงิน</h2>
+              </div>
+
               <div className="space-y-3">
-                {/* ตัวเลือก 1: บัตรเครดิต */}
-                <label className={`flex items-start p-4 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'credit_card' ? 'border-amber-500 bg-amber-50/50' : 'border-stone-200 hover:bg-stone-50'}`}>
-                  <input type="radio" name="payment" value="credit_card" checked={paymentMethod === 'credit_card'} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 w-4 h-4 text-amber-600 focus:ring-amber-500" />
-                  <div className="ml-3 flex-grow">
-                    <span className="block text-sm font-bold text-stone-900 flex items-center gap-2"><CreditCard className="w-5 h-5"/> บัตรเครดิต / เดบิต</span>
-                    <span className="block text-xs text-stone-500 mt-1">ชำระผ่านระบบรักษาความปลอดภัย</span>
-                    
-                    {/* ฟอร์มจำลองบัตรเครดิต (ซ่อนถ้าไม่ได้เลือก) */}
-                    {paymentMethod === 'credit_card' && (
-                      <div className="mt-4 space-y-3 bg-white p-4 rounded-xl border border-stone-200">
-                        <input type="text" placeholder="หมายเลขบัตร 16 หลัก" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg outline-none" required={paymentMethod === 'credit_card'} />
-                        <div className="grid grid-cols-2 gap-3">
-                          <input type="text" placeholder="MM/YY" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg outline-none" required={paymentMethod === 'credit_card'} />
-                          <input type="text" placeholder="CVV" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg outline-none" required={paymentMethod === 'credit_card'} />
-                        </div>
-                        <input type="text" placeholder="ชื่อบนบัตร" className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg outline-none" required={paymentMethod === 'credit_card'} />
-                      </div>
-                    )}
-                  </div>
-                </label>
-
-                {/* ตัวเลือก 2: QR Code */}
-                <label className={`flex items-start p-4 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'promptpay' ? 'border-amber-500 bg-amber-50/50' : 'border-stone-200 hover:bg-stone-50'}`}>
-                  <input type="radio" name="payment" value="promptpay" checked={paymentMethod === 'promptpay'} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 w-4 h-4 text-amber-600 focus:ring-amber-500" />
-                  <div className="ml-3">
-                    <span className="block text-sm font-bold text-stone-900 flex items-center gap-2"><QrCode className="w-5 h-5"/> สแกน QR Code (พร้อมเพย์)</span>
-                  </div>
-                </label>
-
-                {/* ตัวเลือก 3: เก็บเงินปลายทาง */}
-                <label className={`flex items-start p-4 border rounded-2xl cursor-pointer transition-all ${paymentMethod === 'cod' ? 'border-amber-500 bg-amber-50/50' : 'border-stone-200 hover:bg-stone-50'}`}>
-                  <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 w-4 h-4 text-amber-600 focus:ring-amber-500" />
-                  <div className="ml-3">
-                    <span className="block text-sm font-bold text-stone-900 flex items-center gap-2"><Banknote className="w-5 h-5"/> เก็บเงินปลายทาง (Cash on Delivery)</span>
-                  </div>
-                </label>
+                <PayOption value="cod" current={paymentMethod} onChange={setPaymentMethod}
+                  icon={Banknote} title="เก็บเงินปลายทาง" sub="ชำระเงินตอนรับสินค้า" />
+                <PayOption value="promptpay" current={paymentMethod} onChange={setPaymentMethod}
+                  icon={QrCode} title="QR Code พร้อมเพย์" sub="สแกนจ่ายผ่านแอปธนาคาร" />
+                <PayOption value="credit_card" current={paymentMethod} onChange={setPaymentMethod}
+                  icon={CreditCard} title="บัตรเครดิต / เดบิต" sub="Visa, Mastercard, JCB" />
               </div>
+
+              {paymentMethod === "credit_card" && (
+                <div className="mt-4 p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3">
+                  <Field label="หมายเลขบัตร">
+                    <input type="text" placeholder="0000 0000 0000 0000" maxLength={19} className={inputCls} />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="วันหมดอายุ">
+                      <input type="text" placeholder="MM/YY" maxLength={5} className={inputCls} />
+                    </Field>
+                    <Field label="CVV">
+                      <input type="text" placeholder="123" maxLength={4} className={inputCls} />
+                    </Field>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === "promptpay" && (
+                <div className="mt-4 p-6 bg-stone-50 rounded-xl border border-stone-200 text-center">
+                  <div className="w-32 h-32 bg-white rounded-xl border border-stone-200 mx-auto flex items-center justify-center mb-3">
+                    <QrCode className="w-20 h-20 text-stone-300" />
+                  </div>
+                  <p className="text-xs text-stone-500">QR Code จะถูกสร้างหลังยืนยันออเดอร์</p>
+                </div>
+              )}
             </div>
+
+            {errorMsg && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-xl">{errorMsg}</p>
+            )}
           </div>
 
-          {/* ฝั่งขวา: สรุปยอดคำสั่งซื้อ */}
-          <div className="lg:col-span-5">
-            <div className="bg-stone-900 text-white p-6 md:p-8 rounded-3xl h-fit sticky top-24 shadow-xl">
-              <h2 className="text-xl font-bold mb-6 border-b border-stone-700 pb-4">สรุปคำสั่งซื้อ</h2>
-              
-              <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                {cartItems.map(item => (
-                  <div key={item.productId} className="flex gap-4">
-                    <div className="w-16 h-16 bg-stone-800 rounded-lg overflow-hidden shrink-0">
-                      {item.imageUrl && <img src={`${API_URL}${item.imageUrl}`} alt={item.name} className="w-full h-full object-cover" />}
+          {/* ขวา: สรุปยอด */}
+          <div className="lg:col-span-2">
+            <div className="bg-stone-900 text-white rounded-2xl p-6 sticky top-24">
+              <div className="flex items-center gap-2 mb-5 pb-4 border-b border-stone-700">
+                <Package className="w-4 h-4 text-amber-400" />
+                <h2 className="font-bold text-sm">สรุปคำสั่งซื้อ ({cartItems.length} รายการ)</h2>
+              </div>
+
+              {/* รายการ */}
+              <div className="space-y-3 mb-5 max-h-56 overflow-y-auto pr-1">
+                {cartItems.map((item) => (
+                  <div key={item.productId} className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-stone-800 overflow-hidden shrink-0">
+                      {item.imageUrl
+                        ? <img src={`${API_URL}${item.imageUrl}`} alt={item.name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-stone-600 text-xs">ไม่มีรูป</div>
+                      }
                     </div>
-                    <div className="flex-grow">
-                      <h4 className="text-sm font-medium line-clamp-1 text-stone-200">{item.name}</h4>
-                      <p className="text-xs text-stone-400 mt-1">จำนวน: {item.quantity}</p>
-                      <p className="text-sm font-bold text-amber-400 mt-1">฿{(item.price * item.quantity).toLocaleString()}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-stone-200 line-clamp-1">{item.name}</p>
+                      <p className="text-xs text-stone-500 mt-0.5">×{item.quantity}</p>
                     </div>
+                    <p className="text-xs font-bold text-amber-400 shrink-0">{formatTHB(item.price * item.quantity)}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-stone-700 pt-4 space-y-3 text-sm text-stone-300">
-                <div className="flex justify-between">
-                  <span>ยอดรวมสินค้า</span>
-                  <span>฿{totalPrice.toLocaleString()}</span>
+              {/* ยอดรวม */}
+              <div className="border-t border-stone-700 pt-4 space-y-2.5 text-sm">
+                <div className="flex justify-between text-stone-400">
+                  <span>ราคาสินค้า</span><span>{formatTHB(totalPrice)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-stone-400">
                   <span>ค่าจัดส่ง</span>
-                  <span className="text-amber-400 font-medium">จัดส่งฟรี</span>
+                  <span className={freeShipping ? "text-green-400 font-medium" : ""}>
+                    {freeShipping ? "ฟรี" : formatTHB(shippingFee)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline border-t border-stone-700 pt-3 mt-1">
+                  <span className="text-stone-200 font-medium">ยอดชำระสุทธิ</span>
+                  <span className="text-2xl font-black text-amber-400">{formatTHB(totalPrice + shippingFee)}</span>
                 </div>
               </div>
 
-              <div className="border-t border-stone-700 mt-4 pt-4 flex justify-between items-end mb-8">
-                <span className="text-lg">ยอดชำระสุทธิ</span>
-                <span className="text-3xl font-black text-amber-400">฿{totalPrice.toLocaleString()}</span>
-              </div>
-
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={processing}
-                className="w-full bg-amber-500 hover:bg-amber-400 disabled:bg-stone-700 disabled:text-stone-500 text-stone-900 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full mt-6 bg-amber-500 hover:bg-amber-400 active:scale-[0.98] disabled:bg-stone-700 disabled:text-stone-500 text-stone-900 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                {processing ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> กำลังดำเนินการ...</>
-                ) : (
-                  "ยืนยันการสั่งซื้อ"
-                )}
+                {processing
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> กำลังดำเนินการ...</>
+                  : <><CheckCircle className="w-4 h-4" /> ยืนยันการสั่งซื้อ</>
+                }
               </button>
+
+              <p className="text-center text-xs text-stone-500 mt-3">
+                กดยืนยันแสดงว่าคุณยอมรับ<br />เงื่อนไขการซื้อขายของเรา
+              </p>
             </div>
           </div>
-
         </form>
       </div>
     </div>

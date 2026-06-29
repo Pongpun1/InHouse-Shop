@@ -14,7 +14,6 @@ router.post('/register', async (req, res) => {
     });
 
     if (existingUser) {
-      // บอกให้ชัดว่าซ้ำที่ field ไหน
       if (existingUser.email === email) {
         return res.status(400).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
       }

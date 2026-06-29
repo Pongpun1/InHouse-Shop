@@ -1,39 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2, Tag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-// Helper: ดึง token จาก localStorage แนบไปกับทุก request ที่ต้องการ auth
 const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("token")}`,
 });
+
+const formatTHB = (n) => `฿${Number(n).toLocaleString()}`;
 
 export default function CartPage() {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-  // ── โหลดตะกร้าของ user ที่ login อยู่จาก MongoDB ──
   const fetchCart = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/cart`, {
-        headers: authHeaders(),
-      });
-
-      // ถ้า token หมดอายุหรือไม่มี ให้พาไปหน้า login
-      if (res.status === 401) {
-        navigate('/login');
-        return;
-      }
-
+      const res = await fetch(`${API_URL}/api/cart`, { headers: authHeaders() });
+      if (res.status === 401) { navigate("/login"); return; }
       const data = await res.json();
       setCartItems(data.items || []);
-    } catch (err) {
-      setError('โหลดตะกร้าไม่สำเร็จ');
+    } catch {
+      setError("โหลดตะกร้าไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
@@ -41,37 +33,31 @@ export default function CartPage() {
 
   useEffect(() => { fetchCart(); }, []);
 
-  // ── อัปเดตจำนวน (บวก/ลบ) ──
-  const updateQuantity = async (productId, newQuantity) => {
+  const updateQuantity = async (productId, newQty) => {
     try {
       const res = await fetch(`${API_URL}/api/cart/item/${productId}`, {
-        method: 'PUT',
-        headers: authHeaders(),
-        body: JSON.stringify({ quantity: newQuantity }),
+        method: "PUT", headers: authHeaders(),
+        body: JSON.stringify({ quantity: newQty }),
       });
       const data = await res.json();
       setCartItems(data.items || []);
-    } catch {
-      setError('อัปเดตสินค้าไม่สำเร็จ');
-    }
+    } catch { setError("อัปเดตสินค้าไม่สำเร็จ"); }
   };
 
-  // ── ลบสินค้า ──
   const removeItem = async (productId) => {
-    if (!window.confirm('ต้องการลบสินค้านี้ออกจากตะกร้าใช่หรือไม่?')) return;
+    if (!window.confirm("ต้องการลบสินค้านี้ออกจากตะกร้าใช่หรือไม่?")) return;
     try {
       const res = await fetch(`${API_URL}/api/cart/item/${productId}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
+        method: "DELETE", headers: authHeaders(),
       });
       const data = await res.json();
       setCartItems(data.items || []);
-    } catch {
-      setError('ลบสินค้าไม่สำเร็จ');
-    }
+    } catch { setError("ลบสินค้าไม่สำเร็จ"); }
   };
 
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
+  const totalQty = cartItems.reduce((s, i) => s + i.quantity, 0);
+  const freeShipping = totalPrice >= 2000;
 
   if (loading) return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -80,107 +66,142 @@ export default function CartPage() {
   );
 
   return (
-    <div className="min-h-screen bg-stone-50 py-10 px-4 sm:px-6 font-sans">
-      <div className="max-w-4xl mx-auto">
-
-        <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => navigate('/products')} className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600">
-            <ArrowLeft className="w-6 h-6" />
+    <div className="min-h-screen bg-stone-50 font-sans">
+      {/* Top bar */}
+      <div className="bg-white border-b border-stone-200 px-4 sm:px-6 py-4">
+        <div className="max-w-5xl mx-auto flex items-center gap-4">
+          <button onClick={() => navigate("/products")} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600 cursor-pointer">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-3xl font-extrabold text-stone-900 flex items-center gap-3">
-            <ShoppingBag className="w-8 h-8 text-amber-500" /> ตะกร้าสินค้า
-          </h1>
+          <div>
+            <h1 className="text-xl font-extrabold text-stone-900 flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-amber-500" /> ตะกร้าสินค้า
+            </h1>
+            {cartItems.length > 0 && (
+              <p className="text-xs text-stone-400 mt-0.5">{totalQty} ชิ้น · {cartItems.length} รายการ</p>
+            )}
+          </div>
         </div>
+      </div>
 
-        {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {error && <p className="text-sm text-red-600 mb-4 bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
 
         {cartItems.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
             {/* รายการสินค้า */}
-            <div className="lg:col-span-2 space-y-4">
-              {cartItems.map(item => (
-                <div key={item.productId} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex gap-4 items-center">
-                  <div className="w-24 h-24 bg-stone-100 rounded-xl overflow-hidden shrink-0 border border-stone-200">
-                    {item.imageUrl ? (
-                      <img src={`${API_URL}${item.imageUrl}`} alt={item.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-stone-400">ไม่มีรูป</div>
-                    )}
+            <div className="lg:col-span-3 space-y-3">
+              {cartItems.map((item) => (
+                <div key={item.productId} className="bg-white rounded-2xl border border-stone-100 p-4 flex gap-4">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0">
+                    {item.imageUrl
+                      ? <img src={`${API_URL}${item.imageUrl}`} alt={item.name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-xs text-stone-300">ไม่มีรูป</div>
+                    }
                   </div>
 
-                  <div className="flex-grow min-w-0">
-                    <h3 className="font-bold text-stone-900 line-clamp-1">{item.name}</h3>
-                    <p className="text-stone-500 text-sm mb-2">{item.category}</p>
-                    <p className="font-black text-amber-600">฿{Number(item.price).toLocaleString()}</p>
-                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-stone-900 text-sm line-clamp-2 leading-snug">{item.name}</h3>
+                    <p className="text-xs text-stone-400 mt-0.5 mb-3">{item.category}</p>
 
-                  {/* ปรับจำนวน */}
-                  <div className="flex items-center gap-3 bg-stone-50 border border-stone-200 rounded-full px-1 py-1">
-                    <button
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                      className="p-1.5 hover:bg-white rounded-full transition-colors text-stone-600"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="font-bold text-stone-900 w-5 text-center">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                      className="p-1.5 hover:bg-white rounded-full transition-colors text-stone-600"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center border border-stone-200 rounded-full overflow-hidden">
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-600 transition-colors cursor-pointer"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-bold text-stone-900">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          className="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-600 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
 
-                  <button
-                    onClick={() => removeItem(item.productId)}
-                    className="p-2 text-stone-300 hover:text-red-500 transition-colors shrink-0 ml-2"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                      <div className="flex items-center gap-3">
+                        <p className="font-black text-stone-900">{formatTHB(item.price * item.quantity)}</p>
+                        <button
+                          onClick={() => removeItem(item.productId)}
+                          className="p-1.5 text-stone-300 hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
+
+              {/* แถบจัดส่งฟรี */}
+              <div className={`rounded-2xl px-4 py-3 flex items-center gap-2 text-sm font-medium ${
+                freeShipping ? "bg-green-50 text-green-700 border border-green-200" : "bg-stone-100 text-stone-600"
+              }`}>
+                <Tag className="w-4 h-4 shrink-0" />
+                {freeShipping
+                  ? "ยอดสั่งซื้อของคุณได้รับสิทธิ์จัดส่งฟรี!"
+                  : `สั่งซื้อเพิ่มอีก ${formatTHB(2000 - totalPrice)} เพื่อรับสิทธิ์จัดส่งฟรี`
+                }
+              </div>
             </div>
 
             {/* สรุปยอด */}
-            <div className="bg-stone-900 text-white p-6 rounded-2xl h-fit sticky top-24">
-              <h2 className="text-xl font-bold mb-6 border-b border-stone-700 pb-4">สรุปคำสั่งซื้อ</h2>
+            <div className="lg:col-span-2">
+              <div className="bg-stone-900 text-white rounded-2xl p-6 sticky top-24">
+                <h2 className="font-bold text-base mb-5 pb-4 border-b border-stone-700">สรุปคำสั่งซื้อ</h2>
 
-              <div className="flex justify-between items-center mb-4 text-stone-300">
-                <span>ยอดรวมสินค้า ({cartItems.length} รายการ)</span>
-                <span>฿{totalPrice.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center mb-6 text-stone-300 border-b border-stone-700 pb-6">
-                <span>ค่าจัดส่ง</span>
-                <span className="text-amber-400">ฟรี</span>
-              </div>
+                <div className="space-y-3 text-sm mb-5">
+                  <div className="flex justify-between text-stone-400">
+                    <span>ราคาสินค้า ({totalQty} ชิ้น)</span>
+                    <span>{formatTHB(totalPrice)}</span>
+                  </div>
+                  <div className="flex justify-between text-stone-400">
+                    <span>ค่าจัดส่ง</span>
+                    <span className={freeShipping ? "text-green-400 font-medium" : "text-stone-400"}>
+                      {freeShipping ? "ฟรี" : formatTHB(50)}
+                    </span>
+                  </div>
+                </div>
 
-              <div className="flex justify-between items-end mb-8">
-                <span className="text-lg">ยอดชำระสุทธิ</span>
-                <span className="text-3xl font-black text-amber-400">฿{totalPrice.toLocaleString()}</span>
-              </div>
+                <div className="border-t border-stone-700 pt-4 mb-6 flex justify-between items-baseline">
+                  <span className="text-stone-300">ยอดรวมทั้งหมด</span>
+                  <span className="text-2xl font-black text-amber-400">
+                    {formatTHB(freeShipping ? totalPrice : totalPrice + 50)}
+                  </span>
+                </div>
 
-              <button
-                onClick={() => navigate('/checkout')}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                ดำเนินการสั่งซื้อ
-              </button>
+                <button
+                  onClick={() => navigate("/checkout")}
+                  className="w-full bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-stone-900 font-bold py-3.5 rounded-xl transition-all cursor-pointer"
+                >
+                  ดำเนินการสั่งซื้อ
+                </button>
+
+                <button
+                  onClick={() => navigate("/products")}
+                  className="w-full mt-3 text-stone-400 hover:text-white text-sm font-medium py-2 transition-colors cursor-pointer"
+                >
+                  เลือกซื้อสินค้าเพิ่ม
+                </button>
+              </div>
             </div>
           </div>
 
         ) : (
-          <div className="bg-white p-12 rounded-3xl shadow-sm border border-stone-100 text-center">
-            <div className="w-24 h-24 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <ShoppingBag className="w-10 h-10 text-stone-300" />
+          <div className="bg-white rounded-3xl border border-stone-100 py-24 text-center">
+            <div className="w-20 h-20 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-5">
+              <ShoppingBag className="w-9 h-9 text-stone-300" />
             </div>
-            <h2 className="text-2xl font-bold text-stone-900 mb-2">ตะกร้าของคุณยังว่างเปล่า</h2>
-            <p className="text-stone-500 mb-8">ยังไม่ได้เลือกสินค้าใดๆ เข้าตะกร้าเลย</p>
+            <h2 className="text-xl font-bold text-stone-900 mb-2">ตะกร้าของคุณว่างเปล่า</h2>
+            <p className="text-stone-400 text-sm mb-8">ยังไม่ได้เลือกสินค้าใดๆ เข้าตะกร้าเลย</p>
             <button
-              onClick={() => navigate('/products')}
+              onClick={() => navigate("/products")}
               className="bg-stone-900 hover:bg-stone-800 text-white font-bold py-3 px-8 rounded-full transition-colors cursor-pointer"
             >
-              เลือกซื้อสินค้าเลย
+              เลือกซื้อสินค้า
             </button>
           </div>
         )}

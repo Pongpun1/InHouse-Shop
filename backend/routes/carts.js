@@ -1,7 +1,6 @@
 import express from 'express';
 import Cart from '../models/Cart.js';
-// 1. เพิ่มการ Import Product Model
-import Product from '../models/Product.js'; 
+  import Product from '../models/Product.js'; 
 import verifyToken from '../middlewares/verifyToken.js';
 
 const router = express.Router();
