@@ -7,7 +7,7 @@ import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import cartRoutes from './routes/carts.js';
 import orderRoutes from './routes/orders.js';
-import userRoutes from './routes/user.js';
+import userRoutes from './routes/users.js';
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
