@@ -77,6 +77,8 @@ export default function ProductDetailPage() {
       });
 
       if (res.ok) {
+        // ยิง event บอก Header ให้อัปเดตจำนวนตะกร้าทันที โดยไม่ต้องเปลี่ยนหน้า
+        window.dispatchEvent(new Event("cartUpdated"));
         alert(`เพิ่ม "${product.name}" จำนวน ${quantity} ชิ้น ลงในตะกร้าแล้ว!`);
       } else {
         const errorData = await res.json();

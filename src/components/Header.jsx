@@ -54,6 +54,38 @@ export default function Header() {
     setMobileMenuOpen(false);
   }, [location]);
 
+  useEffect(() => {
+  const syncUser = () => {
+    const storedUser = localStorage.getItem("user");
+    setUser(storedUser ? JSON.parse(storedUser) : null);
+  };
+
+  // ฟัง event ที่ ProfilePage ยิงมา
+  window.addEventListener("userUpdated", syncUser);
+  return () => window.removeEventListener("userUpdated", syncUser);
+}, []);
+
+  // ── ฟัง cartUpdated จาก ProductsPage / ProductDetailPage ──
+  useEffect(() => {
+    const syncCart = () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      fetch(`${API_URL}/api/cart`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.items) {
+            const total = data.items.reduce((sum, item) => sum + item.quantity, 0);
+            setCartCount(total);
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("cartUpdated", syncCart);
+    return () => window.removeEventListener("cartUpdated", syncCart);
+  }, []);
+
   const getNavLinks = () => {
     const baseLinks = [
       { to: "/home", label: "หน้าแรก" },
@@ -397,6 +429,7 @@ export default function Header() {
                     border: "1.5px solid #292524",
                     transition: "all 0.2s",
                   }}
+                  onClick={() => navigate("/profile")}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = "#44403c";
                     e.currentTarget.style.background = "#1c1917";
