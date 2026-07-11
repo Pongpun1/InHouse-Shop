@@ -13,7 +13,7 @@ const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const corsOptions = {
-  origin: ['http://localhost:5173', 'https://inhouse-shop.vercel.app'],
+  origin: ['http://localhost:5173','http://localhost', 'https://inhouse-shop.vercel.app'],
   credentials: true,
 };
 

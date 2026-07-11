@@ -1,0 +1,5 @@
+# ไฟล์พวกนี้ไม่ต้อง copy เข้า container
+node_modules
+.env
+uploads
+*.log

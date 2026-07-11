@@ -1,0 +1,61 @@
+# docker-compose คือตัวช่วยให้รัน หลาย container พร้อมกันด้วยคำสั่งเดียว
+# แทนที่จะต้องรัน docker run ... ทีละ container
+version: '3.8'
+
+services:
+
+  # ── MongoDB ────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7          # ดึง MongoDB image จาก Docker Hub
+    container_name: inhouse-mongo
+    ports:
+      - "27017:27017"       # port เครื่องเรา:port ใน container
+    volumes:
+      - mongo-data:/data/db # เก็บข้อมูลไว้ใน volume (ไม่หายตอน container restart)
+    networks:
+      - inhouse-network
+
+  # ── Backend (Express) ──────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend    # บอกว่า Dockerfile อยู่ที่โฟลเดอร์ backend
+    container_name: inhouse-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      # ชี้ไปที่ mongodb service ข้างบน ไม่ใช่ localhost
+      # เพราะ container คนละตัวกัน ต้องใช้ชื่อ service แทน
+      - MONGO_URI=mongodb://mongodb:27017/my_ecommerce
+      - JWT_SECRET=${JWT_SECRET}  # รับค่าจากไฟล์ .env ของเรา
+    depends_on:
+      - mongodb               # รอให้ mongodb ขึ้นก่อนค่อยเริ่ม backend
+    volumes:
+      - ./backend/uploads:/app/uploads  # เชื่อมโฟลเดอร์ uploads จริงเข้า container
+    networks:
+      - inhouse-network
+
+  # ── Frontend (React + Nginx) ───────────────────────────────────
+  frontend:
+    build:
+      context: .             # Dockerfile.frontend อยู่ที่ root
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:3000   # ส่ง API URL ตอน build
+    container_name: inhouse-frontend
+    ports:
+      - "80:80"              # เปิดเว็บที่ port 80 (http://localhost)
+    depends_on:
+      - backend
+    networks:
+      - inhouse-network
+
+# Volume สำหรับเก็บข้อมูล MongoDB ไว้นอก container
+# ถ้าลบ container ข้อมูลยังอยู่
+volumes:
+  mongo-data:
+
+# Network ให้ container คุยกันได้
+networks:
+  inhouse-network:
+    driver: bridge
