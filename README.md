@@ -198,6 +198,31 @@ npm run dev
 
 ---
 
+## CI/CD
+
+โปรเจกต์นี้ใช้ GitHub Actions สำหรับ CI/CD pipeline โดยจะรันอัตโนมัติเมื่อมีการ push หรือเปิด Pull Request ไปที่ branch `main` ดูรายละเอียด workflow ได้ที่ [`.github/workflows`](.github/workflows)
+
+## Deployment
+
+โปรเจกต์นี้ deploy แยกส่วนตาม service ดังนี้:
+
+- **Frontend:** [Vercel](https://vercel.com)
+- **Backend:** [Render](https://render.com)
+- **Database:** [MongoDB Atlas](https://www.mongodb.com/atlas)
+
+## Running with Docker
+
+รันโปรเจกต์ทั้งหมด (frontend, backend, MongoDB) ในเครื่องด้วย Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+หลังจากนั้นเข้าใช้งานได้ที่:
+
+- Frontend: http://localhost
+- Backend API: http://localhost:3000
+
 ## 👨‍💻 ผู้พัฒนา
 
 **Pongpun** — Full Stack Developer  
