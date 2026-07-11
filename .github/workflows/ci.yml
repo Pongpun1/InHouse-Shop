@@ -1,0 +1,66 @@
+# GitHub Actions CI สำหรับ InHouseStore
+# ทำงานทุกครั้งที่ push หรือเปิด Pull Request เข้า branch main
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ── Job 1: ตรวจสอบ Frontend ──────────────────────────────────
+  frontend:
+    name: Frontend Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'  # cache node_modules ให้รันเร็วขึ้นครั้งถัดไป
+
+      - name: Install dependencies
+        run: npm install
+
+      # สร้าง .env จำลองเพื่อให้ Vite build ได้
+      # ใช้ค่า placeholder ไม่ใช่ค่าจริง เพราะแค่ต้องการเช็คว่า build ไม่พัง
+      - name: Create frontend .env
+        run: echo "VITE_API_URL=http://localhost:3000" > .env
+
+      - name: Build frontend
+        run: npm run build
+        # ถ้า build ไม่ผ่าน (import ผิด, syntax error ฯลฯ) job นี้จะ fail
+        # และ GitHub จะส่ง email แจ้งเตือนทันที
+
+  # ── Job 2: ตรวจสอบ Backend ───────────────────────────────────
+  backend:
+    name: Backend Dependency Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm install
+        working-directory: backend
+        # working-directory บอกว่าให้รัน command นี้ในโฟลเดอร์ backend
+
+      - name: Check backend syntax
+        run: node --check server.js
+        working-directory: backend
+        # node --check ตรวจ syntax โดยไม่ต้องรัน server จริง
+        # ไม่ต้องต่อ MongoDB หรือใช้ .env จริงๆ
